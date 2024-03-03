@@ -5,7 +5,7 @@
     ViewData["ActivePage"] = "Trade/Index";
 }
 
-<input type="hidden" id="stockSymbol" value="@Model.StockSymbol" />
+<input type="hidden" id="apiKey" value="@ViewBag.ApiKey" />
 
 <div class="box trading-panel">
     <div class="flex trading-panel-flex">
@@ -20,68 +20,27 @@
             <div class="flex-1">
                 <h3 class="text-grey">New Order</h3>
             </div>
-            <form id="orderForm" method="post" action="/Trade/BuyOrder">
+            <form id="orderForm" method="post">
                 <div class="flex-1 mt mb">
                     <div>
-                        <label for="Quantity">Quantity:</label>
+                        <label asp-for="Quantity">Quantity:</label>
                     </div>
-                    <input type="number" id="Quantity" name="Quantity" value="@Model.Quantity" class="form-input" style="width: 100px"/>
+                    <input type="number" asp-for="Quantity" class="form-input" style="width: 100px"/>
+                    <span asp-validation-for="Quantity"></span>
                 </div>
                 <div class="flex-1 mt" style="margin-top: 15px">
-                    <input type="hidden" name="StockSymbol" value="@Model.StockSymbol" />
-                    <input type="hidden" name="StockName" value="@Model.StockName" />
-                    <input type="hidden" name="Price" value="@Model.Price" />
-                    <button type="button" class="button button-red-back" onclick="createOrder('Sell')"><i class="fa-solid fa-arrow-down"></i> Sell</button>
-                    <button type="button" class="button button-green-back" onclick="createOrder('Buy')"><i class="fa-solid fa-arrow-up"></i> Buy</button>
+                    <input type="hidden" id="stockSymbol" asp-for="StockSymbol" />
+                    <input type="hidden" asp-for="StockName" />
+                    <input type="hidden" asp-for="Price" />
+                    <button type="submit" class="button button-red-back" asp-action="SellOrder" asp-controller="Trade" style="margin-right: 8px;"><i class="fa-solid fa-arrow-down"></i> Sell</button>
+                    <button type="submit" class="button button-green-back" asp-action="BuyOrder" asp-controller="Trade"><i class="fa-solid fa-arrow-up"></i> Buy</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<script>
-    const stockSymbolElement = document.getElementById('stockSymbol');
-    const stockSymbol = stockSymbolElement.value;
-    const priceElement = document.querySelector('.price');
-    const socket = new WebSocket('wss://ws.finnhub.io?token=@ViewBag.ApiKey')
+@section Scripts {
+    <script src="~/js/StocksApp.js"></script>
+}
 
-    function createOrder(orderType)
-    {
-        var form = document.getElementById('orderForm');
-        if (orderType === 'Buy')
-        {
-            form.action = '/Trade/BuyOrder';
-        }
-        else if (orderType === 'Sell')
-        {
-            form.action = '/Trade/SellOrder';
-        }
-        form.submit();
-    }
-
-    // Connection opened -> Subscribe
-    socket.addEventListener('open', function (event) {
-        socket.send(JSON.stringify({'type':'subscribe', 'symbol': `${stockSymbol}`}))
-    });
-
-    // Listen for messages
-    socket.addEventListener('message', function (event) {
-        console.log('Message from server ', event.data);
-
-        const data = JSON.parse(event.data);
-        if (data.type === 'trade') {
-            const latestTrade = data.data[0]; 
-            priceElement.textContent = latestTrade.p.toFixed(2);
-        }
-    });
-
-    // Unsubscribe
-    var unsubscribe = function(symbol) {
-        socket.send(JSON.stringify({'type':'unsubscribe','symbol': symbol}))
-    }
-
-    window.addEventListener('beforeunload', function () {
-        unsubscribe(stockSymbol);
-        socket.close();
-    });
-</script>
